@@ -29,14 +29,19 @@ class Birthday(Field):
         super().__init__(value)
         try:
             b_date = datetime.strptime(value, '%d.%m.%Y')
-            self.value = b_date
+            self.value = value
         except ValueError:
             raise ValueError("Invalid date format. Use DD.MM.YYYY")
 
     def is_valid(self):
-        today = datetime.now()
-        return self.value < today
-
+        try:
+            b_date = datetime.strptime(self.value, '%d.%m.%Y')
+            today = datetime.now()
+            return b_date < today
+        except ValueError:
+            return False
+    def __str__(self):
+        return self.value
 
 class Record:
     def __init__(self, name):
@@ -73,8 +78,9 @@ class Record:
             raise ValueError("Birthday cannot be in the future!")
 
     def __str__(self):
-        return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}"
-
+        phone_str = '; '.join(p.value for p in self.phones)
+        birthday_str = self.birthday.value if self.birthday else 'No birthday'
+        return f"Contact name: {self.name.value}, phones: {phone_str}, Birthday: {birthday_str}"
 
 class AddressBook(UserDict):
     def add_record(self, record):
@@ -91,16 +97,17 @@ class AddressBook(UserDict):
             print(f'Contact {name} not found')
 
     def get_upcoming_birthdays(self):
-        today = datetime.now().date()  # Переконайтеся, що today має тип date
+        today = datetime.now().date()
         upcoming_birthdays = []
         for record in self.data.values():
             if record.birthday:
-                bday_this_year = record.birthday.value.date().replace(year=today.year)
+                bday = datetime.strptime(record.birthday.value, '%d.%m.%Y').date()
+                bday_this_year = bday.replace(year=today.year)
                 if 0 <= (bday_this_year - today).days < 8:
                     while bday_this_year.weekday() > 4:  # Якщо день народження випадає на вихідний
                         bday_this_year += timedelta(days=1)
                     upcoming_birthdays.append(
-                        {"name": record.name.value, "birthday": bday_this_year.strftime('%d.%m.%Y')}
+                        f"Name: {record.name.value}, upcoming birthday: {bday_this_year.strftime('%d.%m.%Y')}"
                     )
         return upcoming_birthdays
 
@@ -198,7 +205,7 @@ def show_birthday(args, book: AddressBook):
     name = args[0]
     record = book.find(name)
     if record and record.birthday:
-        return f"Birthday for {name} is {record.birthday.value.strftime('%d.%m.%Y')}"
+        return f"Birthday for {name} is {record.birthday.value}"
     else:
         return f"Birthday for {name} not found."
 

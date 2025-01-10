@@ -1,6 +1,6 @@
 from collections import UserDict
 from datetime import datetime, timedelta
-
+import pickle
 
 class Field:
     def __init__(self, value):
@@ -26,12 +26,11 @@ class Phone(Field):
 
 class Birthday(Field):
     def __init__(self, value):
-        super().__init__(value)
         try:
-            b_date = datetime.strptime(value, '%d.%m.%Y')
-            self.value = value
+            datetime.strptime(value, '%d.%m.%Y')
         except ValueError:
             raise ValueError("Invalid date format. Use DD.MM.YYYY")
+        super().__init__(value)
 
     def is_valid(self):
         try:
@@ -92,9 +91,9 @@ class AddressBook(UserDict):
     def delete(self, name):
         if name in self.data:
             del self.data[name]
-            print(f'Contact {name} deleted')
+            return f'Contact {name} deleted'
         else:
-            print(f'Contact {name} not found')
+            return f'Contact {name} not found'
 
     def get_upcoming_birthdays(self):
         today = datetime.now().date()
@@ -117,6 +116,24 @@ class AddressBook(UserDict):
             result.append(str(record))
         return '\n'.join(result)
 
+def delete(args, book):
+    name = args[0]
+    return book.delete(name)
+
+#----------------------------------------------------------------
+
+def save_data(book, filename="addressbook.pkl"):
+    with open(filename, "wb") as f:
+        pickle.dump(book, f)
+
+def load_data(filename="addressbook.pkl"):
+    try:
+        with open(filename, "rb") as f:
+            return pickle.load(f)
+    except FileNotFoundError:
+        return AddressBook()  # Повернення нової адресної книги, якщо файл не знайдено
+
+#-----------------------------------------------------------------
 
 def input_error(func):
     def wrapper(*args, book, **kwargs):
@@ -210,13 +227,15 @@ def show_birthday(args, book: AddressBook):
         return f"Birthday for {name} not found."
 
 
+
 def main():
-    book = AddressBook()
+    book = load_data()
     print("Welcome to the assistant bot!")
     while True:
         user_input = input("Enter a command: ")
         command, args = parse_input(user_input)
         if command in ["close", "exit"]:
+            save_data(book)
             print("Good bye!")
             break
         elif command == "hello":
@@ -240,10 +259,10 @@ def main():
                 continue
             for day in birthdays:
                 print(f"{day}")
+        elif command == "delete":
+            print(delete(args, book=book))
         else:
             print("Invalid command")
 
 if __name__ ==  "__main__":
     main()
-
-book = AddressBook()
